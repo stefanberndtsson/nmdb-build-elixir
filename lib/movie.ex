@@ -13,11 +13,105 @@ defmodule NMDB.Movie do
   def extract_full_year({movie, remaining}) do
     {Map.put(movie, :full_year, remaining), nil}
   end
+
+  def extract_title_year({movie, remaining}) do
+    {title_year, remaining_title} =
+      case Regex.run(~r/^(.*) \((....\/[IVX]+)\)$/, remaining) do
+        [_, remaining_title, title_year] -> {title_year, remaining_title}
+        _ -> case Regex.run(~r/^(.*) \((....)\)$/, remaining) do
+               [_, remaining_title, title_year] -> {title_year, remaining_title}
+               _ -> {"", remaining}
+        end
+      end
+    {Map.put(movie, :title_year, title_year), remaining_title}
+  end
+
+  def extract_title_category({movie, remaining}) do
+    {title_category, remaining_title} =
+    if String.starts_with?(remaining, "\"") do
+      {"TVS", remaining}
+    else
+      case Regex.run(~r/^(.*) \((TV|V|VG)\)$/, remaining) do
+        [_, remaining_title, title_category] -> {title_category, remaining_title}
+        _ -> {"", remaining}
+      end
+    end
+    
+    {Map.put(movie, :title_category, title_category), remaining_title}
+  end
   
+  def extract_title({movie, remaining}) do
+    {Map.put(movie, :title, remaining), ""}
+  end
+
+  def prepare_title({movie, _}) do
+    {movie, movie.full_title}
+  end
+
+  def extract_episode_parent_title({movie, {title_data, episode_data}}) do
+    {Map.put(movie, :episode_parent_title, title_data), {title_data, episode_data}}
+  end
+  
+  def extract_episode_name({movie, {title_data, episode_data}}) do
+    {Map.put(movie, :episode_name, String.trim(episode_data)), {title_data, ""}}
+  end
+
+  def extract_episode_season({movie, {title_data, episode_data}}) do
+    episode_season =
+      case Regex.run(~r/\(#(\d+)\.\d+\)$/, episode_data) do
+        [_, season] -> season
+      end
+    {Map.put(movie, :episode_season, episode_season), {title_data, episode_data}}
+  end
+
+  def extract_episode_episode({movie, {title_data, episode_data}}) do
+    {episode_episode, remaining} =
+      case Regex.run(~r/^(.*) ?\(#\d+\.(\d+)\)$/, episode_data) do
+        [_, remaining, episode] -> {episode, remaining}
+      end
+    {Map.put(movie, :episode_episode, episode_episode), {title_data, remaining}}
+  end
+
+  def restore_title({movie, {remaining_title, _}}) do
+    {movie, remaining_title}
+  end
+  
+  def is_episode_true({movie, remaining}) do
+    {Map.put(movie, :is_episode, true), remaining}
+  end
+  
+  def is_episode_false({movie, remaining}) do
+    {Map.put(movie, :is_episode, false), remaining}
+  end
+  
+  def extract_episode({movie, remaining}) do
+    case Regex.run(~r/^(.*\)) {(.*)}$/, remaining) do
+      [_, title_data, episode_data] ->
+        {movie, {title_data, episode_data}}
+        |> is_episode_true
+        |> extract_episode_parent_title
+        |> extract_episode_season
+        |> extract_episode_episode
+        |> extract_episode_name
+        |> restore_title
+      _ -> {movie, remaining} |> is_episode_false
+    end
+  end
+  
+  def extract_title_parts(data) do
+    data
+    |> prepare_title
+    |> extract_episode
+    |> extract_title_category
+    |> extract_title_year
+    |> extract_title
+  end
+
   def parse(movie_line) do
     {%NMDB.Movie{}, movie_line}
     |> extract_full_title
     |> extract_full_year
+    |> extract_title_parts
     |> elem(0)
   end
 end
