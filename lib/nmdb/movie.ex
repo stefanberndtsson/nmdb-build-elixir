@@ -14,6 +14,49 @@ defmodule NMDB.Movie do
     {Map.put(movie, :full_year, remaining), nil}
   end
 
+  def make_year(movie, start_year, end_year, open) do
+    {start_year_int, _} = Integer.parse(start_year)
+    {end_year_int, _} = Integer.parse(end_year)
+    movie
+    |> Map.put(:years, start_year_int..end_year_int)
+    |> Map.put(:year_open_end, open)
+  end
+  
+  def extract_year_single({movie, yearstring}) do
+    case Regex.run(~r/^(\d\d\d\d)$/, yearstring) do
+      [_, year] ->
+        {make_year(movie, year, year, false), ""}
+      _ ->
+        {movie, yearstring}
+    end
+  end
+
+  def extract_year_closed({movie, yearstring}) do
+    case Regex.run(~r/^(\d\d\d\d)-(\d\d\d\d)$/, yearstring) do
+      [_, start_year, end_year] ->
+        {make_year(movie, start_year, end_year, false), ""}
+      _ ->
+        {movie, yearstring}
+    end
+  end
+  
+  def extract_year_open({movie, yearstring}) do
+    case Regex.run(~r/^(\d\d\d\d)-\?\?\?\?$/, yearstring) do
+      [_, start_year] ->
+        end_year = Integer.to_string(DateTime.utc_now.year)
+        {make_year(movie, start_year, end_year, true), ""}
+      _ ->
+        {movie, yearstring}
+    end
+  end
+  
+  def extract_year({movie, _}) do
+    {movie, movie.full_year}
+    |> extract_year_single
+    |> extract_year_closed
+    |> extract_year_open
+  end
+  
   def extract_title_year({movie, remaining}) do
     {title_year, remaining_title} =
       case Regex.run(~r/^(.*) \((....\/[IVX]+)\)$/, remaining) do
@@ -21,7 +64,7 @@ defmodule NMDB.Movie do
         _ -> case Regex.run(~r/^(.*) \((....)\)$/, remaining) do
                [_, remaining_title, title_year] -> {title_year, remaining_title}
                _ -> {"", remaining}
-        end
+             end
       end
     {Map.put(movie, :title_year, title_year), remaining_title}
   end
@@ -112,6 +155,7 @@ defmodule NMDB.Movie do
     |> extract_full_title
     |> extract_full_year
     |> extract_title_parts
+    |> extract_year
     |> elem(0)
   end
 end

@@ -8,8 +8,17 @@ defmodule NMDBTest.Movie do
     movie2 = "Total Recall (2012/I) (TV)\t\t\t\t\t2012"
     movie3 = "Total Recall (2012/II) (VG)\t\t\t\t\t2012"
     series_main = "\"Fawlty Towers\" (1975)\t\t\t\t\t1975-1979"
+    series_main2 = "\"Naughty Towers\" (1975)\t\t\t\t\t1975-????"
     series_episode = "\"Fawlty Towers\" (1975) {Basil the Rat (#2.6)}\t\t1979"
-    {:ok, [pid: pid, movie1: movie1, movie2: movie2, movie3: movie3, series_main: series_main, series_episode: series_episode]}
+    {:ok,
+     [pid: pid,
+      movie1: movie1,
+      movie2: movie2,
+      movie3: movie3,
+      series_main: series_main,
+      series_main2: series_main2,
+      series_episode: series_episode
+     ]}
   end
   
   test "extract_full_title", context do
@@ -85,5 +94,21 @@ defmodule NMDBTest.Movie do
   test "extract_episode_episode", context do
     %NMDB.Movie{episode_episode: episode_episode} = NMDB.Movie.parse(context[:series_episode])
     assert "6" = episode_episode
+  end
+
+  test "extract_year", context do
+    this_year = DateTime.utc_now.year
+    
+    %NMDB.Movie{year_open_end: year_open_end, years: years} = NMDB.Movie.parse(context[:movie1])
+    assert false == year_open_end
+    assert 1990..1990 == years
+
+    %NMDB.Movie{year_open_end: year_open_end, years: years} = NMDB.Movie.parse(context[:series_main])
+    assert false == year_open_end
+    assert 1975..1979 == years
+
+    %NMDB.Movie{year_open_end: year_open_end, years: years} = NMDB.Movie.parse(context[:series_main2])
+    assert true == year_open_end
+    assert 1975..this_year == years
   end
 end
