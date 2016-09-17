@@ -14,6 +14,22 @@ defmodule NMDB.Movie do
     {Map.put(movie, :full_year, remaining), nil}
   end
 
+  def extract_suspended({movie, remaining_title}) do
+    {suspended, remaining_title} =
+      cond do
+        # Misspelled variant
+      Regex.match?(~r/ \{\{SUSP(EN|NE)D\}\}$/, remaining_title) ->
+        {true, remaining_title}
+        # Other spellings
+      Regex.match?(~r/ \{\{SUSP(EN|NE)DED\}\}$/, remaining_title) ->
+        {true, remaining_title}
+        # Not suspended
+      true ->
+        {false, remaining_title}
+    end
+    {Map.put(movie, :suspended, suspended), remaining_title}
+  end
+  
   def make_year(movie, start_year, end_year, open) do
     {start_year_int, _} = Integer.parse(start_year)
     {end_year_int, _} = Integer.parse(end_year)
@@ -143,7 +159,6 @@ defmodule NMDB.Movie do
   
   def extract_title_parts(data) do
     data
-    |> prepare_title
     |> extract_episode
     |> extract_title_category
     |> extract_title_year
@@ -151,11 +166,19 @@ defmodule NMDB.Movie do
   end
 
   def parse(movie_line) do
-    {%NMDB.Movie{}, movie_line}
+    {movie, remaining} = {%NMDB.Movie{}, movie_line}
     |> extract_full_title
     |> extract_full_year
-    |> extract_title_parts
-    |> extract_year
-    |> elem(0)
+    |> prepare_title
+    |> extract_suspended
+
+    if movie.suspended do
+      movie
+    else
+      {movie, remaining}
+      |> extract_title_parts
+      |> extract_year
+      |> elem(0)
+    end
   end
 end

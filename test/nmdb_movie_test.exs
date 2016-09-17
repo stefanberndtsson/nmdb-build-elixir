@@ -7,6 +7,7 @@ defmodule NMDBTest.Movie do
     movie1 = "Total Recall (1990)\t\t\t\t\t1990"
     movie2 = "Total Recall (2012/I) (TV)\t\t\t\t\t2012"
     movie3 = "Total Recall (2012/II) (VG)\t\t\t\t\t2012"
+    suspended_movie1 = "Untotal Recall (1990) {{SUSPENDED}}\t\t\t\t\t1990"
     series_main = "\"Fawlty Towers\" (1975)\t\t\t\t\t1975-1979"
     series_main2 = "\"Naughty Towers\" (1975)\t\t\t\t\t1975-????"
     series_episode = "\"Fawlty Towers\" (1975) {Basil the Rat (#2.6)}\t\t1979"
@@ -15,6 +16,7 @@ defmodule NMDBTest.Movie do
       movie1: movie1,
       movie2: movie2,
       movie3: movie3,
+      suspended_movie1: suspended_movie1,
       series_main: series_main,
       series_main2: series_main2,
       series_episode: series_episode
@@ -173,6 +175,22 @@ defmodule NMDBTest.Movie do
     {%{year_open_end: year_open_end, years: years}, _} = NMDB.Movie.extract_year_open({%{}, "1975-????"})
     assert true == year_open_end
     assert 1975..this_year == years
+  end
+
+  test "extract_suspended" do
+    {%{suspended: suspended}, _} = NMDB.Movie.extract_suspended({%{}, "Total Recall (1991)"})
+    assert false == suspended
+    {%{suspended: suspended}, _} = NMDB.Movie.extract_suspended({%{}, "Untotal Recall (1991) {{SUSPENDED}}"})
+    assert true == suspended
+    {%{suspended: suspended}, _} = NMDB.Movie.extract_suspended({%{}, "Untotal Recall (1991) {{SUSPEND}}"})
+    assert true == suspended
+  end
+  
+  test "parsed_extract_suspended", context do
+    %NMDB.Movie{suspended: suspended} = NMDB.Movie.parse(context[:movie1])
+    assert false == suspended
+    %NMDB.Movie{suspended: suspended} = NMDB.Movie.parse(context[:suspended_movie1])
+    assert true == suspended
   end
   
   test "parsed_extract_episode_parent_title", context do
