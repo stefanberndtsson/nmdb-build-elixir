@@ -5,8 +5,75 @@ defmodule NMDB.Movie do
     nil
   end
 
+  def movie_line(movie) do
+    Enum.join([movie.full_title, movie.full_year, movie.title, movie.title_year,
+               movie.title_category, movie.year_open_end, movie.is_episode,
+               movie.episode_name, movie.episode_season, movie.episode_episode,
+               movie.episode_parent_title], "\t") <> "\n"
+  end
+  
+  def movie_writer(file) do
+    receive do
+      {:movie, movie} ->
+        IO.write(file, movie_line(movie))
+        movie_writer(file)
+      {:done} -> {:done}
+      {:error, errno} -> IO.puts("Error: #{errno}")
+    end
+  end
+  
+  def read_line(file, control, caller) do
+    case IO.read(file, :line) do
+      :eof ->
+        IO.puts("Done reading")
+        send control, {:eof}
+      data ->
+        send caller, {:movie, parse(data) }
+        read_line(file, control, caller)
+    end
+  end
+  
+  def parse_file(filename, moviefilename) do
+    IO.puts("Parse-Caller: #{inspect(self())}")
+    caller = self()
+    moviefilepid =
+      case File.open(moviefilename, [:write, :utf8]) do
+        {:ok, moviefile} ->
+          spawn_link(fn -> movie_writer(moviefile) end)
+        {:error, errno} ->
+          IO.puts("Error: #{errno}")
+          raise "Unable to open output movie file"
+      end
+    case File.open(filename, [:read, :utf8]) do
+      {:ok, file} ->
+        spawn_link(fn -> read_line(file, caller, moviefilepid) end)
+      {:error, errno} ->
+        IO.puts("Error: #{errno}")
+        raise "Unable to open output movie file"
+    end
+    IO.puts("Waiting for EOF...")
+    receive do
+      {:eof} ->
+        IO.puts("Got EOF...")
+        send moviefilepid, {:done}
+    end
+  end
+
+  def make_int(string) do
+    case Integer.parse(string) do
+      :error ->
+        IO.puts("Not an integer")
+        raise "Not an integer"
+      {value, ""} ->
+        value
+      {_, _} ->
+        IO.puts("Not an integer")
+        raise "Not a proper integer"
+    end
+  end
+  
   def extract_full_title({movie, remaining}) do
-    parts = remaining |> String.split(~r/\t+/)
+    parts = remaining |> String.trim |> String.split(~r/\t+/)
     {Map.put(movie, :full_title, hd(parts)), parts |> tl |> hd}
   end
 
@@ -119,16 +186,26 @@ defmodule NMDB.Movie do
     episode_season =
       case Regex.run(~r/\(#(\d+)\.\d+\)$/, episode_data) do
         [_, season] -> season
+        nil -> nil
       end
-    {Map.put(movie, :episode_season, episode_season), {title_data, episode_data}}
+    if episode_season == nil do
+      {movie, {title_data, episode_data}}
+    else
+      {Map.put(movie, :episode_season, make_int(episode_season)), {title_data, episode_data}}
+    end
   end
 
   def extract_episode_episode({movie, {title_data, episode_data}}) do
     {episode_episode, remaining} =
       case Regex.run(~r/^(.*) ?\(#\d+\.(\d+)\)$/, episode_data) do
         [_, remaining, episode] -> {episode, remaining}
+        nil -> {nil, episode_data}
       end
-    {Map.put(movie, :episode_episode, episode_episode), {title_data, remaining}}
+    if episode_episode == nil do
+      {movie, {title_data, episode_data}}
+    else
+      {Map.put(movie, :episode_episode, make_int(episode_episode)), {title_data, remaining}}
+    end
   end
 
   def restore_title({movie, {remaining_title, _}}) do

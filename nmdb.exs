@@ -1,11 +1,14 @@
-peopleids = NMDB.IDs.run
-movieids = NMDB.IDs.run
+NMDB.Movie.parse_file("data/movies-short.list.dat", "output/outputmovie.dat")
 
-NMDB.IDs.load_file(peopleids, "person_ids.tab")
-NMDB.IDs.load_file(movieids, "movie_ids.tab")
 
-send peopleids, {:inspect}
-send movieids, {:inspect}
+#peopleids = NMDB.IDs.run
+#movieids = NMDB.IDs.run
+
+#NMDB.IDs.load_file(peopleids, "person_ids.tab")
+#NMDB.IDs.load_file(movieids, "movie_ids.tab")
+
+#send peopleids, {:inspect}
+#send movieids, {:inspect}
 #value = NMDB.IDs.get(peopleids)
 #IO.puts "Got: #{value}"
 #NMDB.IDs.put peopleids, "hello world"

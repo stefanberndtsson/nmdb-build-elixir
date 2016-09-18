@@ -4,13 +4,13 @@ defmodule NMDBTest.Movie do
 
   setup do
     pid = NMDB.Movie.run
-    movie1 = "Total Recall (1990)\t\t\t\t\t1990"
-    movie2 = "Total Recall (2012/I) (TV)\t\t\t\t\t2012"
-    movie3 = "Total Recall (2012/II) (VG)\t\t\t\t\t2012"
-    suspended_movie1 = "Untotal Recall (1990) {{SUSPENDED}}\t\t\t\t\t1990"
-    series_main = "\"Fawlty Towers\" (1975)\t\t\t\t\t1975-1979"
-    series_main2 = "\"Naughty Towers\" (1975)\t\t\t\t\t1975-????"
-    series_episode = "\"Fawlty Towers\" (1975) {Basil the Rat (#2.6)}\t\t1979"
+    movie1 = "Total Recall (1990)\t\t\t\t\t1990\n"
+    movie2 = "Total Recall (2012/I) (TV)\t\t\t\t\t2012\n"
+    movie3 = "Total Recall (2012/II) (VG)\t\t\t\t\t2012\n"
+    suspended_movie1 = "Untotal Recall (1990) {{SUSPENDED}}\t\t\t\t\t1990\n"
+    series_main = "\"Fawlty Towers\" (1975)\t\t\t\t\t1975-1979\n"
+    series_main2 = "\"Naughty Towers\" (1975)\t\t\t\t\t1975-????\n"
+    series_episode = "\"Fawlty Towers\" (1975) {Basil the Rat (#2.6)}\t\t1979\n"
     {:ok,
      [pid: pid,
       movie1: movie1,
