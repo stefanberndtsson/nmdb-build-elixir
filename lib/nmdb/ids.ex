@@ -45,9 +45,9 @@ defmodule NMDB.IDs do
     case IO.read(file, :line) do
       :eof -> ids
       data ->
-        [name, id] = data |> String.trim |> String.split("\t")
+        [id, name] = :binary.copy(data) |> String.trim |> String.split("\t")
         {id_int, _} = Integer.parse(id)
-        int_put(ids, name, id_int) |> read_line(file)
+        int_put(ids, :binary.copy(name), id_int) |> read_line(file)
     end
   end
 

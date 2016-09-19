@@ -6,7 +6,7 @@ defmodule NMDB.Movie do
   end
 
   def movie_line(movie) do
-    Enum.join([movie.full_title, movie.full_year, movie.title, movie.title_year,
+    Enum.join([movie.id, movie.full_title, movie.full_year, movie.title, movie.title_year,
                movie.title_category, movie.year_open_end, movie.is_episode,
                movie.episode_name, movie.episode_season, movie.episode_episode,
                movie.episode_parent_title], "\t") <> "\n"
@@ -22,18 +22,18 @@ defmodule NMDB.Movie do
     end
   end
   
-  def read_line(file, control, caller) do
+  def read_line(file, ids, control, caller) do
     case IO.read(file, :line) do
       :eof ->
         IO.puts("Done reading")
         send control, {:eof}
       data ->
-        send caller, {:movie, parse(data) }
-        read_line(file, control, caller)
+        send caller, {:movie, parse(ids, data) }
+        read_line(file, ids, control, caller)
     end
   end
   
-  def parse_file(filename, moviefilename) do
+  def parse_file(ids, filename, moviefilename) do
     IO.puts("Parse-Caller: #{inspect(self())}")
     caller = self()
     moviefilepid =
@@ -46,7 +46,7 @@ defmodule NMDB.Movie do
       end
     case File.open(filename, [:read, :utf8]) do
       {:ok, file} ->
-        spawn_link(fn -> read_line(file, caller, moviefilepid) end)
+        spawn_link(fn -> read_line(file, ids, caller, moviefilepid) end)
       {:error, errno} ->
         IO.puts("Error: #{errno}")
         raise "Unable to open output movie file"
@@ -70,6 +70,11 @@ defmodule NMDB.Movie do
         IO.puts("Not an integer")
         raise "Not a proper integer"
     end
+  end
+
+  def get_id({movie, remaining}, ids) do
+    ret = {Map.put(movie, :id, NMDB.IDs.find_or_add(ids, movie.full_title)), remaining}
+    ret
   end
   
   def extract_full_title({movie, remaining}) do
@@ -219,7 +224,7 @@ defmodule NMDB.Movie do
   def is_episode_false({movie, remaining}) do
     {Map.put(movie, :is_episode, false), remaining}
   end
-  
+
   def extract_episode({movie, remaining}) do
     case Regex.run(~r/^(.*\)) {(.*)}$/, remaining) do
       [_, title_data, episode_data] ->
@@ -242,9 +247,10 @@ defmodule NMDB.Movie do
     |> extract_title
   end
 
-  def parse(movie_line) do
+  def parse(ids, movie_line) do
     {movie, remaining} = {%NMDB.Movie{}, movie_line}
     |> extract_full_title
+    |> get_id(ids)
     |> extract_full_year
     |> prepare_title
     |> extract_suspended
