@@ -1,4 +1,5 @@
 movieids = NMDB.IDs.run
+:observer.start
 IO.puts("Memory: #{:erlang.memory(:binary)}")
 NMDB.IDs.load_file(movieids, "data/movies_ids.dat")
 IO.puts("Memory: #{:erlang.memory(:binary)}")

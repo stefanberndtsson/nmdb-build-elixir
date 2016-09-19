@@ -48,7 +48,7 @@ defmodule NMDB.Movie do
         IO.puts("Done reading")
         send control, {:eof}
       data ->
-        movie = parse(ids, data)
+        movie = parse(ids, :binary.copy(data))
         send moviefilepid, {:movie, movie}
         send yearfilepid, {:movie, movie}
         read_line(file, ids, control, moviefilepid, yearfilepid)
