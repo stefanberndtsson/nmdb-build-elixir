@@ -18,35 +18,65 @@ defmodule NMDB.Movie do
         IO.write(file, movie_line(movie))
         movie_writer(file)
       {:done} -> {:done}
-      {:error, errno} -> IO.puts("Error: #{errno}")
+      {:error, errno} -> IO.puts("Error-write-movie: #{errno}")
+    end
+  end
+
+  def year_line(movie_id, year) do
+    Enum.join([movie_id, year], "\t") <> "\n"
+  end
+  
+  def write_years(file, movie_id, years) do
+    Enum.each(years, fn year ->
+      IO.write(file, year_line(movie_id, year))
+    end)
+  end
+  
+  def year_writer(file) do
+    receive do
+      {:movie, movie} ->
+        write_years(file, movie.id, movie.years)
+        year_writer(file)
+      {:done} -> {:done}
+      {:error, errno} -> IO.puts("Error-write-year: #{errno}")
     end
   end
   
-  def read_line(file, ids, control, caller) do
+  def read_line(file, ids, control, moviefilepid, yearfilepid) do
     case IO.read(file, :line) do
       :eof ->
         IO.puts("Done reading")
         send control, {:eof}
       data ->
-        send caller, {:movie, parse(ids, data) }
-        read_line(file, ids, control, caller)
+        movie = parse(ids, data)
+        send moviefilepid, {:movie, movie}
+        send yearfilepid, {:movie, movie}
+        read_line(file, ids, control, moviefilepid, yearfilepid)
     end
   end
   
-  def parse_file(ids, filename, moviefilename) do
+  def parse_file(ids, filename, moviefilename, yearfilename) do
     IO.puts("Parse-Caller: #{inspect(self())}")
     caller = self()
     moviefilepid =
       case File.open(moviefilename, [:write, :utf8]) do
-        {:ok, moviefile} ->
+        {:ok, moviefile} -> 
           spawn_link(fn -> movie_writer(moviefile) end)
-        {:error, errno} ->
+       {:error, errno} ->
+          IO.puts("Error: #{errno}")
+          raise "Unable to open output movie file"
+      end
+    yearfilepid =
+      case File.open(yearfilename, [:write, :utf8]) do
+        {:ok, yearfile} -> 
+          spawn_link(fn -> year_writer(yearfile) end)
+       {:error, errno} ->
           IO.puts("Error: #{errno}")
           raise "Unable to open output movie file"
       end
     case File.open(filename, [:read, :utf8]) do
       {:ok, file} ->
-        spawn_link(fn -> read_line(file, ids, caller, moviefilepid) end)
+        spawn_link(fn -> read_line(file, ids, caller, moviefilepid, yearfilepid) end)
       {:error, errno} ->
         IO.puts("Error: #{errno}")
         raise "Unable to open output movie file"
@@ -56,6 +86,7 @@ defmodule NMDB.Movie do
       {:eof} ->
         IO.puts("Got EOF...")
         send moviefilepid, {:done}
+        send yearfilepid, {:done}
     end
   end
 

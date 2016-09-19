@@ -2,7 +2,7 @@ movieids = NMDB.IDs.run
 IO.puts("Memory: #{:erlang.memory(:binary)}")
 NMDB.IDs.load_file(movieids, "data/movies_ids.dat")
 IO.puts("Memory: #{:erlang.memory(:binary)}")
-NMDB.Movie.parse_file(movieids, "data/movies.list.dat", "output/outputmovie.dat")
+NMDB.Movie.parse_file(movieids, "data/movies.list.dat", "output/outputmovie.dat", "output/outputyears.dat")
 IO.puts("Memory: #{:erlang.memory(:binary)}")
 
 #peopleids = NMDB.IDs.run
