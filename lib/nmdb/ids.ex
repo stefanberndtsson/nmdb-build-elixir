@@ -19,11 +19,13 @@ defmodule NMDB.IDs do
     case Map.get(ids, name) do
       nil ->
         new_id = int_inc_id(ids)
-        int_put(ids, name, new_id)
+        ids = int_put(ids, name, new_id)
         send caller, {:id, new_id}
-      id -> send caller, {:id, id }
+        ids
+      id ->
+        send caller, {:id, id }
+        ids
     end
-    ids
   end
   
   defp int_inc_id(ids) do
